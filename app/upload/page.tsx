@@ -10,7 +10,10 @@ export default function UploadPage() {
       flex
       items-center
       justify-center
-      text-white"
+      bg-black
+      text-white
+      text-4xl
+      font-bold"
     >
       Upload Page
     </div>
