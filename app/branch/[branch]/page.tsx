@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 const subjectsData: any = {
-
   firstYear: {
     firstYear: [
       "Engineering Physics",
@@ -17,7 +16,6 @@ const subjectsData: any = {
   },
 
   CSE: {
-
     secondYear: [
       "Problem Solving Using Python",
       "Operating Systems",
@@ -41,11 +39,9 @@ const subjectsData: any = {
       "Cloud Security",
       "Web Application Databases",
     ],
-
   },
 
   IT: {
-
     secondYear: [
       "Database Management Systems",
       "Operating Systems",
@@ -63,11 +59,9 @@ const subjectsData: any = {
     fourthYear: [
       "Natural Language Processing",
     ],
-
   },
 
   ECE: {
-
     secondYear: [
       "Python Programming",
       "Signals and Systems",
@@ -83,11 +77,9 @@ const subjectsData: any = {
     fourthYear: [
       "Project Work",
     ],
-
   },
 
   EEE: {
-
     secondYear: [
       "Circuit Analysis",
       "DC Machines",
@@ -102,11 +94,9 @@ const subjectsData: any = {
     fourthYear: [
       "Project Work",
     ],
-
   },
 
   MECH: {
-
     secondYear: [
       "Thermodynamics",
       "Fluid Mechanics",
@@ -122,11 +112,9 @@ const subjectsData: any = {
     fourthYear: [
       "Project Work",
     ],
-
   },
 
   CIVIL: {
-
     secondYear: [
       "Fluid Mechanics",
       "Surveying",
@@ -142,9 +130,7 @@ const subjectsData: any = {
     fourthYear: [
       "Project Work",
     ],
-
   },
-
 };
 
 export default function BranchPage({
@@ -154,28 +140,19 @@ export default function BranchPage({
     branch: string;
   };
 }) {
-  const branch = decodeURIComponent(params.branch).toUpperCase();
+  const branch = decodeURIComponent(params.branch);
 
-const years = subjectsData[branch];
+  const years = subjectsData[branch];
 
-if (!years) {
-  return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center text-4xl">
-      Branch not found
-    </main>
-  );
-}
-
-if (!years) {
-  return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center text-4xl">
-      Branch not found
-    </main>
-  );
-}
+  if (!years) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center text-5xl">
+        Branch not found
+      </main>
+    );
+  }
 
   return (
-
     <main
       className="
       min-h-screen
@@ -183,9 +160,10 @@ if (!years) {
       overflow-hidden
       px-6
       md:px-16
-      py-32"
+      py-32
+      bg-black
+      text-white"
     >
-
       {/* BACKGROUND */}
       <div
         className="
@@ -224,11 +202,8 @@ if (!years) {
         transition={{
           duration: 1,
         }}
-        className="
-        relative
-        z-10"
+        className="relative z-10"
       >
-
         <p
           className="
           uppercase
@@ -237,9 +212,7 @@ if (!years) {
           text-sm
           mb-6"
         >
-
           Branch Academic Portal
-
         </p>
 
         <h1
@@ -249,9 +222,7 @@ if (!years) {
           font-black
           leading-tight"
         >
-
           {branch}
-
         </h1>
 
         <p
@@ -262,13 +233,9 @@ if (!years) {
           max-w-2xl
           leading-relaxed"
         >
-
-          Explore subjects, notes,
-          PDFs and academic resources
+          Explore subjects, notes, PDFs and academic resources
           for the {branch} branch.
-
         </p>
-
       </motion.section>
 
       {/* YEARS */}
@@ -279,10 +246,8 @@ if (!years) {
         mt-24
         space-y-28"
       >
-
         {Object.entries(years).map(
           ([year, subjects]: any) => (
-
             <motion.div
               key={year}
               initial={{
@@ -300,21 +265,16 @@ if (!years) {
                 duration: 0.8,
               }}
             >
-
               {/* YEAR TITLE */}
               <div className="mb-14">
-
                 <h2
                   className="
                   text-5xl
                   font-black
                   text-white"
                 >
-
                   {year}
-
                 </h2>
-
               </div>
 
               {/* SUBJECT GRID */}
@@ -326,18 +286,17 @@ if (!years) {
                 xl:grid-cols-3
                 gap-8"
               >
-
                 {subjects.map(
                   (
                     subject: string,
                     index: number
                   ) => (
-
                     <Link
                       key={index}
-                      href={`/subject/${subject.toLowerCase().replace(/\s+/g, "-")}?branch=${branch}&year=${year}`}
+                      href={`/subject/${subject
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")}?branch=${branch}&year=${year}`}
                     >
-
                       <motion.div
                         whileHover={{
                           y: -10,
@@ -363,7 +322,6 @@ if (!years) {
                         flex-col
                         justify-end"
                       >
-
                         {/* GLOW */}
                         <div
                           className="
@@ -394,7 +352,6 @@ if (!years) {
                         />
 
                         <div className="relative z-10">
-
                           <p
                             className="
                             text-blue-400
@@ -403,9 +360,7 @@ if (!years) {
                             text-xs
                             mb-5"
                           >
-
                             Subject
-
                           </p>
 
                           <h3
@@ -417,9 +372,7 @@ if (!years) {
                             group-hover:text-blue-100
                             transition"
                           >
-
                             {subject}
-
                           </h3>
 
                           <p
@@ -429,31 +382,18 @@ if (!years) {
                             text-lg
                             leading-relaxed"
                           >
-
-                            Explore notes,
-                            PDFs and academic
-                            resources.
-
+                            Explore notes, PDFs and academic resources.
                           </p>
-
                         </div>
-
                       </motion.div>
-
                     </Link>
-
                   )
                 )}
-
               </div>
-
             </motion.div>
-
           )
         )}
-
       </section>
-
     </main>
   );
 }
