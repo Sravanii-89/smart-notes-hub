@@ -133,16 +133,18 @@ const subjectsData: any = {
   },
 };
 
-export default function BranchPage({
+export default async function BranchPage({
   params,
 }: {
-  params: {
+  params: Promise<{
     branch: string;
-  };
+  }>;
 }) {
-  const branch = decodeURIComponent(params.branch);
+  const { branch } = await params;
 
-  const years = subjectsData[branch];
+  const decodedBranch = decodeURIComponent(branch);
+
+  const years = subjectsData[decodedBranch];
 
   if (!years) {
     return (
@@ -222,7 +224,7 @@ export default function BranchPage({
           font-black
           leading-tight"
         >
-          {branch}
+          {decodedBranch}
         </h1>
 
         <p
@@ -234,7 +236,7 @@ export default function BranchPage({
           leading-relaxed"
         >
           Explore subjects, notes, PDFs and academic resources
-          for the {branch} branch.
+          for the {decodedBranch} branch.
         </p>
       </motion.section>
 
@@ -295,7 +297,7 @@ export default function BranchPage({
                       key={index}
                       href={`/subject/${subject
                         .toLowerCase()
-                        .replace(/\s+/g, "-")}?branch=${branch}&year=${year}`}
+                        .replace(/\s+/g, "-")}?branch=${decodedBranch}&year=${year}`}
                     >
                       <motion.div
                         whileHover={{
