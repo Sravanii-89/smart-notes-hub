@@ -44,7 +44,7 @@ export default function UploadPage() {
 
       const { error: uploadError } = await supabase.storage
         .from("notes-pdfs")
-        .upload(fileName, file);
+        .upload(`uploads/${fileName}`, file);
 
       if (uploadError) {
         alert(uploadError.message);
@@ -54,7 +54,7 @@ export default function UploadPage() {
 
       const { data } = supabase.storage
         .from("notes-pdfs")
-        .getPublicUrl(fileName);
+        .getPublicUrl(`uploads/${fileName}`);
 
       const pdfUrl = data.publicUrl;
 

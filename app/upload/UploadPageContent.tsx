@@ -1,216 +1,114 @@
 "use client";
 
 export const dynamic = "force-dynamic";
-import {
-  useEffect,
-  useState,
-} from "react";
 
-import {
-  useSearchParams,
-} from "next/navigation";
-
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 
-import { motion } from "framer-motion";
-
 const branches = [
+  "First Year",
   "CSE",
   "IT",
   "ECE",
   "EEE",
   "MECH",
   "CIVIL",
-  "firstYear",
 ];
 
 const years = [
-  "firstYear",
-  "secondYear",
-  "thirdYear",
-  "fourthYear",
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
 ];
 
-export default function UploadPageContent() {
-
-  const searchParams =
-    useSearchParams();
-
-  const [title, setTitle] =
-    useState("");
-
-  const [subject, setSubject] =
-    useState("");
-
-  const [branch, setBranch] =
-    useState("");
-
-  const [year, setYear] =
-    useState("");
-
-  const [file, setFile] =
-    useState<File | null>(null);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [summary, setSummary] =
-    useState("");
-
-  useEffect(() => {
-
-    const s =
-      searchParams.get("subject");
-
-    const b =
-      searchParams.get("branch");
-
-    const y =
-      searchParams.get("year");
-
-    if (s) setSubject(s);
-    if (b) setBranch(b);
-    if (y) setYear(y);
-
-  }, []);
+export default function UploadPage() {
+  const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("");
+  const [branch, setBranch] = useState("");
+  const [year, setYear] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function handleUpload() {
-
-    if (
-      !title ||
-      !subject ||
-      !branch ||
-      !year ||
-      !file
-    ) {
-
-      alert(
-        "Please fill all fields."
-      );
-
+    if (!title || !subject || !branch || !year || !file) {
+      alert("Please fill all fields");
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    /* FILE UPLOAD */
-    const fileName =
-      `${Date.now()}-${file.name}`;
+      const fileName = `${Date.now()}-${file.name}`;
 
-    const {
-      error: uploadError,
-    } = await supabase.storage
-      .from("notes-pdfs")
-      .upload(
-        fileName,
-        file
-      );
+      // Upload PDF
+      const { error: uploadError } = await supabase.storage
+        .from("notes-pdfs")
+        .upload(`uploads/${fileName}`, file);
 
-    if (uploadError) {
+      if (uploadError) {
+        alert(uploadError.message);
+        setLoading(false);
+        return;
+      }
 
-      alert(
-        uploadError.message
-      );
+      // Get public URL
+      const { data } = supabase.storage
+        .from("notes-pdfs")
+        .getPublicUrl(`uploads/${fileName}`);
 
-      setLoading(false);
+      const pdfUrl = data.publicUrl;
 
-      return;
-    }
-
-    const {
-      data: publicUrlData,
-    } = supabase.storage
-      .from("notes-pdfs")
-      .getPublicUrl(fileName);
-
-    const pdfUrl =
-      publicUrlData.publicUrl;
-
-    /* SAVE NOTE */
-    const {
-      error: insertError,
-    } = await supabase
-      .from("notes")
-      .insert([
-        {
-          title,
-          subject,
-          branch,
-          year,
-          pdf_url: pdfUrl,
-          uploaded_by:
-            "Sravani",
-        },
-      ]);
-
-    if (insertError) {
-
-      alert(
-        insertError.message
-      );
-
-      setLoading(false);
-
-      return;
-    }
-
-    /* AI SUMMARY */
-    const aiResponse =
-      await fetch(
-        "/api/summary",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
+      // Save in database
+      const { error: insertError } = await supabase
+        .from("notes")
+        .insert([
+          {
+            title,
+            subject,
+            branch,
+            year,
+            pdf_url: pdfUrl,
+            uploaded_by: "Sravani",
           },
+        ]);
 
-          body: JSON.stringify({
+      if (insertError) {
+        alert(insertError.message);
+        setLoading(false);
+        return;
+      }
 
-            text:
-              `
-Title: ${title}
+      alert("Notes uploaded successfully 🚀");
 
-Subject: ${subject}
+      setTitle("");
+      setSubject("");
+      setBranch("");
+      setYear("");
+      setFile(null);
 
-Branch: ${branch}
-
-Year: ${year}
-
-Generate academic summary for these engineering notes.
-`,
-          }),
-
-        }
-      );
-
-    const aiData =
-      await aiResponse.json();
-
-    setSummary(
-      aiData.summary
-    );
-
-    alert(
-      "Notes uploaded successfully 🚀"
-    );
-
-    setLoading(false);
+      setLoading(false);
+    } catch (error) {
+      console.log(error);
+      alert("Upload failed");
+      setLoading(false);
+    }
   }
 
   return (
-
     <main
       className="
       min-h-screen
       relative
       overflow-hidden
       px-6
-      py-32"
+      md:px-16
+      pt-40
+      pb-20
+      bg-[#050816]
+      text-white"
     >
-
-      {/* BACKGROUND */}
       <div
         className="
         absolute
@@ -238,7 +136,7 @@ Generate academic summary for these engineering notes.
       <motion.div
         initial={{
           opacity: 0,
-          y: 50,
+          y: 40,
         }}
         animate={{
           opacity: 1,
@@ -253,10 +151,7 @@ Generate academic summary for these engineering notes.
         max-w-3xl
         mx-auto"
       >
-
-        {/* HEADER */}
         <div className="mb-14">
-
           <p
             className="
             uppercase
@@ -265,18 +160,15 @@ Generate academic summary for these engineering notes.
             text-sm
             mb-6"
           >
-
             AI Academic Upload
-
           </p>
 
           <h1
             className="
-            text-6xl
+            text-5xl
             md:text-7xl
             font-black"
           >
-
             Upload
 
             <span
@@ -284,16 +176,11 @@ Generate academic summary for these engineering notes.
               block
               text-blue-500"
             >
-
               Notes
-
             </span>
-
           </h1>
-
         </div>
 
-        {/* FORM */}
         <div
           className="
           rounded-[40px]
@@ -304,16 +191,11 @@ Generate academic summary for these engineering notes.
           p-10
           space-y-8"
         >
-
           <input
             type="text"
             placeholder="Note Title"
             value={title}
-            onChange={(e) =>
-              setTitle(
-                e.target.value
-              )
-            }
+            onChange={(e) => setTitle(e.target.value)}
             className="
             w-full
             rounded-2xl
@@ -323,19 +205,14 @@ Generate academic summary for these engineering notes.
             px-6
             py-5
             text-xl
-            outline-none
-            focus:border-blue-500"
+            outline-none"
           />
 
           <input
             type="text"
             placeholder="Subject"
             value={subject}
-            onChange={(e) =>
-              setSubject(
-                e.target.value
-              )
-            }
+            onChange={(e) => setSubject(e.target.value)}
             className="
             w-full
             rounded-2xl
@@ -345,17 +222,12 @@ Generate academic summary for these engineering notes.
             px-6
             py-5
             text-xl
-            outline-none
-            focus:border-blue-500"
+            outline-none"
           />
 
           <select
             value={branch}
-            onChange={(e) =>
-              setBranch(
-                e.target.value
-              )
-            }
+            onChange={(e) => setBranch(e.target.value)}
             className="
             w-full
             rounded-2xl
@@ -366,35 +238,21 @@ Generate academic summary for these engineering notes.
             py-5
             text-xl"
           >
+            <option value="">Select Branch</option>
 
-            <option value="">
-              Select Branch
-            </option>
-
-            {branches.map(
-              (branch) => (
-
-                <option
-                  key={branch}
-                  value={branch}
-                >
-
-                  {branch}
-
-                </option>
-
-              )
-            )}
-
+            {branches.map((branch) => (
+              <option
+                key={branch}
+                value={branch}
+              >
+                {branch}
+              </option>
+            ))}
           </select>
 
           <select
             value={year}
-            onChange={(e) =>
-              setYear(
-                e.target.value
-              )
-            }
+            onChange={(e) => setYear(e.target.value)}
             className="
             w-full
             rounded-2xl
@@ -405,29 +263,18 @@ Generate academic summary for these engineering notes.
             py-5
             text-xl"
           >
+            <option value="">Select Year</option>
 
-            <option value="">
-              Select Year
-            </option>
-
-            {years.map(
-              (year) => (
-
-                <option
-                  key={year}
-                  value={year}
-                >
-
-                  {year}
-
-                </option>
-
-              )
-            )}
-
+            {years.map((year) => (
+              <option
+                key={year}
+                value={year}
+              >
+                {year}
+              </option>
+            ))}
           </select>
 
-          {/* FILE */}
           <div
             className="
             border-2
@@ -438,22 +285,16 @@ Generate academic summary for these engineering notes.
             text-center
             bg-black/20"
           >
-
             <input
               type="file"
               accept=".pdf"
               onChange={(e) =>
-                setFile(
-                  e.target.files?.[0] ||
-                    null
-                )
+                setFile(e.target.files?.[0] || null)
               }
               className="text-gray-400"
             />
-
           </div>
 
-          {/* BUTTON */}
           <motion.button
             whileHover={{
               scale: 1.03,
@@ -473,67 +314,10 @@ Generate academic summary for these engineering notes.
             font-bold
             shadow-[0_0_40px_rgba(37,99,235,0.35)]"
           >
-
-            {loading
-              ? "Uploading..."
-              : "Upload + Generate AI Summary"}
-
+            {loading ? "Uploading..." : "Upload Notes"}
           </motion.button>
-
         </div>
-
-        {/* AI SUMMARY */}
-        {summary && (
-
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 40,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            className="
-            mt-12
-            rounded-[40px]
-            border
-            border-blue-500/20
-            bg-blue-500/5
-            backdrop-blur-2xl
-            p-10"
-          >
-
-            <h2
-              className="
-              text-4xl
-              font-black
-              text-blue-400
-              mb-8"
-            >
-
-              AI Summary 🤖
-
-            </h2>
-
-            <div
-              className="
-              whitespace-pre-wrap
-              text-lg
-              text-gray-300
-              leading-relaxed"
-            >
-
-              {summary}
-
-            </div>
-
-          </motion.div>
-
-        )}
-
       </motion.div>
-
     </main>
   );
 }
