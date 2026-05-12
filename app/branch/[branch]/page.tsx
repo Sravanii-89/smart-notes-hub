@@ -154,12 +154,25 @@ export default function BranchPage({
     branch: string;
   };
 }) {
+  const branch = decodeURIComponent(params.branch).toUpperCase();
 
-  const branch =
-    params.branch;
+const years = subjectsData[branch];
 
-  const years =
-    subjectsData[branch];
+if (!years) {
+  return (
+    <main className="min-h-screen bg-black text-white flex items-center justify-center text-4xl">
+      Branch not found
+    </main>
+  );
+}``     ``
+
+if (!years) {
+  return (
+    <main className="min-h-screen bg-black text-white flex items-center justify-center text-4xl">
+      Branch not found
+    </main>
+  );
+}
 
   return (
 
