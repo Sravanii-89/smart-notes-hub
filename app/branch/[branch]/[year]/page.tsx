@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { subjectsData } from "@/data/subjects";
+import SubjectCard from "@/components/SubjectCard";
+import {
+  formatYearLabel,
+  getSubjectsForBranchYear,
+  normalizeBranchParam,
+  subjectPageHref,
+} from "@/lib/subjects";
 
 export default async function YearPage({
   params,
@@ -9,94 +15,74 @@ export default async function YearPage({
     year: string;
   }>;
 }) {
+  const { branch: branchParam, year } = await params;
+  const branchKey = normalizeBranchParam(branchParam);
 
-  const resolvedParams =
-    await params;
-
-  const branch =
-    resolvedParams.branch.toUpperCase();
-
-  const year =
-    resolvedParams.year;
-
-  const branchData =
-    subjectsData[
-      branch as keyof typeof subjectsData
-    ] as any;
-
-  const subjects =
-    branchData?.[year];
-
-  if (!subjects) {
-
+  if (!branchKey || branchKey === "firstYear") {
     return (
-      <div className="text-white p-20 text-5xl">
-        Subjects Not Found
-      </div>
+      <main className="min-h-screen px-6 md:px-16 py-32 text-white">
+        <h1 className="text-5xl font-black">Year not found</h1>
+        <Link href="/" className="mt-8 inline-block text-blue-400">
+          Back to home
+        </Link>
+      </main>
+    );
+  }
+
+  const subjects = getSubjectsForBranchYear(branchParam, year);
+
+  if (!subjects.length) {
+    return (
+      <main className="min-h-screen px-6 md:px-16 py-32 text-white">
+        <h1 className="text-5xl font-black">Subjects not found</h1>
+        <Link
+          href={`/branch/${branchKey}`}
+          className="mt-8 inline-block text-blue-400"
+        >
+          Back to {branchKey}
+        </Link>
+      </main>
     );
   }
 
   return (
+    <main className="min-h-screen relative overflow-hidden px-6 md:px-16 py-32">
+      <div className="absolute top-[-200px] left-[-100px] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[160px]" />
+      <div className="absolute bottom-[-300px] right-[-200px] w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[180px]" />
 
-    <div className="min-h-screen bg-black text-white p-10">
+      <section className="relative z-10">
+        <Link
+          href={`/branch/${branchKey}`}
+          className="text-blue-400 hover:text-blue-300 mb-8 inline-block"
+        >
+          ← Back to {branchKey}
+        </Link>
 
-      <h1 className="text-6xl font-bold text-blue-400 mb-4">
-        {branch}
-      </h1>
+        <p className="uppercase tracking-[0.4em] text-blue-400 text-sm mb-6">
+          {branchKey}
+        </p>
 
-      <p className="text-3xl text-gray-300 mb-12 capitalize">
+        <h1 className="text-6xl md:text-8xl font-black leading-tight capitalize">
+          {formatYearLabel(year)}
+        </h1>
 
-        {year.replace("Year", " Year")}
+        <p className="mt-8 text-xl text-gray-400 max-w-2xl leading-relaxed">
+          Select a subject to explore notes, PDFs, and academic resources.
+        </p>
+      </section>
 
-      </p>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-        {subjects.map(
-          (
-            subject: string,
-            index: number
-          ) => {
-
-            const slug =
-              subject
-                .toLowerCase()
-                .replace(/&/g, "and")
-                .replace(/\s+/g, "-");
-
-            return (
-
-              <Link
-                key={index}
-                href={`/subject/${slug}?branch=${branch}&year=${year}`}
-              >
-
-                <div
-                  className="
-                  bg-[#06143a]
-                  border
-                  border-blue-900
-                  rounded-3xl
-                  p-8
-                  hover:scale-105
-                  transition
-                  shadow-2xl"
-                >
-
-                  <h2 className="text-2xl font-bold">
-                    {subject}
-                  </h2>
-
-                </div>
-
-              </Link>
-
-            );
-          }
-        )}
-
-      </div>
-
-    </div>
+      <section className="relative z-10 mt-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {subjects.map((subject, index) => (
+            <SubjectCard
+              key={subject}
+              href={subjectPageHref(subject, branchKey, year)}
+              title={subject}
+              index={index}
+            />
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }
