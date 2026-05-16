@@ -5,7 +5,8 @@ import {
   useState,
 } from "react";
 
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolvePdfUrl } from "@/lib/storage";
 
 import {
   motion,
@@ -47,23 +48,24 @@ export default function NotesPage() {
   }, []);
 
   async function fetchNotes() {
+    setLoading(true);
 
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("notes")
-      .select("*");
+    if (!isSupabaseConfigured) {
+      setNotes([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase.from("notes").select("*");
 
     if (error) {
-
-      console.log(error);
-
+      console.error(error);
+      setNotes([]);
+      setLoading(false);
       return;
     }
 
     setNotes(data || []);
-
     setLoading(false);
   }
 
@@ -212,6 +214,13 @@ Generate detailed engineering notes summary.
 
         </h2>
 
+      ) : !isSupabaseConfigured ? (
+
+        <p className="text-xl text-gray-400">
+          Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and
+          NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local
+        </p>
+
       ) : (
 
         <div
@@ -328,9 +337,7 @@ Generate detailed engineering notes summary.
                   >
 
                     <a
-                      href={
-                        note.pdf_url
-                      }
+                      href={resolvePdfUrl(note.pdf_url)}
                       target="_blank"
                       className="
                       flex-1
@@ -346,10 +353,7 @@ Generate detailed engineering notes summary.
                     </a>
 
                     <a
-                      href={
-                        note.pdf_url
-                      }
-                      download
+                      href={resolvePdfUrl(note.pdf_url, true)}
                       className="
                       flex-1
                       text-center

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolvePdfUrl } from "@/lib/storage";
 
 export default function SavedPage() {
 
@@ -221,7 +222,7 @@ export default function SavedPage() {
               >
 
                 <a
-                  href={note.pdf_url}
+                  href={resolvePdfUrl(note.pdf_url)}
                   target="_blank"
                   className="
                   flex-1
@@ -239,8 +240,7 @@ export default function SavedPage() {
                 </a>
 
                 <a
-                  href={note.pdf_url}
-                  download
+                  href={resolvePdfUrl(note.pdf_url, true)}
                   className="
                   flex-1
                   text-center

@@ -85,7 +85,7 @@ export function getSubjectsForBranchYear(
 }
 
 export function formatYearLabel(year: string): string {
-  return year.replace(/([A-Z])/g, " $1").trim();
+  return year.replace("Year", " Year");
 }
 
 export function subjectPageHref(

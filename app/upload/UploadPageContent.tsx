@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
-import { slugToDisplayName } from "@/lib/subjects";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { uploadNotePdf } from "@/lib/storage";
+import { formatYearLabel, slugToDisplayName } from "@/lib/subjects";
 
 const branches = [
   "CSE",
@@ -56,25 +57,24 @@ export default function UploadPageContent() {
       return;
     }
 
+    if (!isSupabaseConfigured) {
+      alert("Supabase is not configured. Check your .env.local file.");
+      return;
+    }
+
     setLoading(true);
 
-    const fileName = `${Date.now()}-${file.name}`;
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("notes-pdfs")
-      .upload(fileName, file);
+    const uploadResult = await uploadNotePdf(file, fileName);
 
-    if (uploadError) {
-      alert(uploadError.message);
+    if ("error" in uploadResult) {
+      alert(uploadResult.error);
       setLoading(false);
       return;
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("notes-pdfs")
-      .getPublicUrl(fileName);
-
-    const pdfUrl = publicUrlData.publicUrl;
+    const pdfUrl = uploadResult.pdfUrl;
 
     const { error: insertError } = await supabase.from("notes").insert([
       {
@@ -93,13 +93,14 @@ export default function UploadPageContent() {
       return;
     }
 
-    const aiResponse = await fetch("/api/summary", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: `
+    try {
+      const aiResponse = await fetch("/api/summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: `
 Title: ${title}
 
 Subject: ${subject}
@@ -110,13 +111,25 @@ Year: ${year}
 
 Generate academic summary for these engineering notes.
 `,
-      }),
-    });
+        }),
+      });
 
-    const aiData = await aiResponse.json();
-    setSummary(aiData.summary ?? "");
-
-    alert("Notes uploaded successfully 🚀");
+      if (!aiResponse.ok) {
+        console.error("Summary API error:", aiResponse.status);
+        alert(
+          "Notes uploaded successfully 🚀 (AI summary could not be generated.)"
+        );
+      } else {
+        const aiData = await aiResponse.json();
+        setSummary(aiData.summary ?? "");
+        alert("Notes uploaded successfully 🚀");
+      }
+    } catch (error) {
+      console.error("Summary request failed:", error);
+      alert(
+        "Notes uploaded successfully 🚀 (AI summary could not be generated.)"
+      );
+    }
 
     setTitle("");
     setSubject("");
@@ -127,7 +140,7 @@ Generate academic summary for these engineering notes.
   }
 
   return (
-    <main className="min-h-screen relative overflow-hidden px-6 py-32">
+    <main className="min-h-screen relative overflow-hidden px-6 md:px-16 pt-40 pb-20 bg-[#050816] text-white">
       <div className="absolute top-[-200px] right-[-100px] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[180px]" />
       <div className="absolute bottom-[-250px] left-[-150px] w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[180px]" />
 
@@ -186,7 +199,7 @@ Generate academic summary for these engineering notes.
             <option value="">Select Year</option>
             {years.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {formatYearLabel(item)}
               </option>
             ))}
           </select>

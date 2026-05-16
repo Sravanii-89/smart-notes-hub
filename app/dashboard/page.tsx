@@ -5,7 +5,8 @@ import {
   useState,
 } from "react";
 
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolvePdfUrl } from "@/lib/storage";
 
 import {
   motion,
@@ -26,22 +27,23 @@ export default function DashboardPage() {
   }, []);
 
   async function fetchNotes() {
+    setLoading(true);
 
-    const {
-      data,
-      error,
-    } = await supabase
+    if (!isSupabaseConfigured) {
+      setNotes([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
       .from("notes")
       .select("*")
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      );
+      .order("created_at", { ascending: false });
 
-    if (!error) {
-
+    if (error) {
+      console.error(error);
+      setNotes([]);
+    } else {
       setNotes(data || []);
     }
 
@@ -209,7 +211,7 @@ export default function DashboardPage() {
                 </div>
 
                 <a
-                  href={note.pdf_url}
+                  href={resolvePdfUrl(note.pdf_url)}
                   target="_blank"
                   className="
                   block

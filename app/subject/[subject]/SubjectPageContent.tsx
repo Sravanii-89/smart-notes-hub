@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { resolvePdfUrl } from "@/lib/storage";
 import { slugToDisplayName, subjectToSlug } from "@/lib/subjects";
 
 export default function SubjectPageContent() {
@@ -31,6 +32,12 @@ export default function SubjectPageContent() {
   async function fetchNotes() {
     setLoading(true);
 
+    if (!isSupabaseConfigured) {
+      setNotes([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("notes")
       .select("*")
@@ -39,7 +46,8 @@ export default function SubjectPageContent() {
       .eq("year", year);
 
     if (error) {
-      console.log(error);
+      console.error(error);
+      setNotes([]);
       setLoading(false);
       return;
     }
@@ -138,7 +146,7 @@ ${year}
                 <h3 className="text-3xl font-black mb-4">{note.title}</h3>
                 <motion.div className="flex gap-4 mt-6">
                   <a
-                    href={note.pdf_url}
+                    href={resolvePdfUrl(note.pdf_url)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex-1 text-center py-3 rounded-2xl bg-blue-600 hover:bg-blue-500"
@@ -146,8 +154,7 @@ ${year}
                     Preview
                   </a>
                   <a
-                    href={note.pdf_url}
-                    download
+                    href={resolvePdfUrl(note.pdf_url, true)}
                     className="flex-1 text-center py-3 rounded-2xl border border-white/10 bg-white/5"
                   >
                     Download
