@@ -15,21 +15,31 @@ export function getPublicPdfUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
+/**
+ * Resolves pdf_url from DB — supports bare paths (uploads/foo.pdf)
+ * or full Supabase public URLs from older rows.
+ */
 export function extractObjectPath(pdfUrl: string): string | null {
-  if (!pdfUrl) {
+  if (!pdfUrl?.trim()) {
     return null;
   }
 
-  try {
-    const url = new URL(pdfUrl);
+  const trimmed = pdfUrl.trim();
 
-    const markers = [
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    return trimmed.replace(/^\/+/, "");
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const bucketMarkers = [
       `/object/public/${NOTES_BUCKET}/`,
+      `/object/public/notes-pdfs/`,
       `/object/sign/${NOTES_BUCKET}/`,
       `/object/authenticated/${NOTES_BUCKET}/`,
     ];
 
-    for (const marker of markers) {
+    for (const marker of bucketMarkers) {
       const idx = url.pathname.indexOf(marker);
       if (idx !== -1) {
         return decodeURIComponent(
@@ -38,9 +48,11 @@ export function extractObjectPath(pdfUrl: string): string | null {
       }
     }
 
-    const pathParam = url.searchParams.get("path");
-    if (pathParam) {
-      return decodeURIComponent(pathParam);
+    const legacyMatch = url.pathname.match(
+      /\/storage\/v1\/object\/public\/[^/]+\/(.+)$/
+    );
+    if (legacyMatch?.[1]) {
+      return decodeURIComponent(legacyMatch[1]);
     }
   } catch {
     return null;
@@ -49,30 +61,27 @@ export function extractObjectPath(pdfUrl: string): string | null {
   return null;
 }
 
-/** Paths to try when the stored URL path does not match the real object. */
 export function candidateStoragePaths(objectPath: string): string[] {
-  const fileName = objectPath.split("/").pop();
+  const normalized = objectPath.replace(/^\/+/, "");
+  const fileName = normalized.split("/").pop();
+
   if (!fileName) {
-    return [objectPath];
+    return [normalized];
   }
 
   const paths = new Set<string>([
-    objectPath,
+    normalized,
     buildStoragePath(fileName),
     fileName,
   ]);
 
-  if (objectPath.startsWith("uploads/")) {
-    paths.add(objectPath.slice("uploads/".length));
+  if (normalized.startsWith("uploads/")) {
+    paths.add(normalized.slice("uploads/".length));
   }
 
   return [...paths];
 }
 
-/**
- * Opens PDFs through the app proxy so private buckets and path
- * mismatches (root vs uploads/) are handled server-side.
- */
 export function getPdfProxyHref(
   pdfUrl: string,
   download = false
@@ -93,65 +102,38 @@ export function resolvePdfUrl(
   return getPdfProxyHref(pdfUrl, download);
 }
 
-export async function getAccessiblePdfUrl(
-  pdfUrl: string
-): Promise<string> {
-  const objectPath = extractObjectPath(pdfUrl);
-  if (!objectPath) {
-    return pdfUrl;
-  }
-
-  for (const path of candidateStoragePaths(objectPath)) {
-    const { data, error } = await supabase.storage
-      .from(NOTES_BUCKET)
-      .createSignedUrl(path, 60 * 60);
-
-    if (!error && data?.signedUrl) {
-      return data.signedUrl;
-    }
-  }
-
-  return getPublicPdfUrl(objectPath);
-}
-
 export async function uploadNotePdf(
   file: File,
   fileName: string
-): Promise<{ pdfUrl: string; storagePath: string } | { error: string }> {
+): Promise<{ storagePath: string } | { error: string }> {
   const uploadOptions = {
     cacheControl: "3600",
-    upsert: false,
+    upsert: true,
     contentType: file.type || "application/pdf",
   };
 
-  const folderPath = buildStoragePath(fileName);
+  const storagePath = buildStoragePath(fileName);
 
   const { error: folderError } = await supabase.storage
     .from(NOTES_BUCKET)
-    .upload(folderPath, file, uploadOptions);
+    .upload(storagePath, file, uploadOptions);
 
   if (!folderError) {
-    return {
-      storagePath: folderPath,
-      pdfUrl: getPublicPdfUrl(folderPath),
-    };
+    return { storagePath };
   }
 
   const { error: rootError } = await supabase.storage
     .from(NOTES_BUCKET)
     .upload(fileName, file, uploadOptions);
 
-  if (rootError) {
-    return {
-      error:
-        rootError.message ||
-        folderError.message ||
-        "Failed to upload PDF to storage.",
-    };
+  if (!rootError) {
+    return { storagePath: fileName };
   }
 
   return {
-    storagePath: fileName,
-    pdfUrl: getPublicPdfUrl(fileName),
+    error:
+      rootError.message ||
+      folderError.message ||
+      "Failed to upload PDF to storage.",
   };
 }

@@ -74,15 +74,13 @@ export default function UploadPageContent() {
       return;
     }
 
-    const pdfUrl = uploadResult.pdfUrl;
-
     const { error: insertError } = await supabase.from("notes").insert([
       {
         title,
         subject,
         branch,
         year,
-        pdf_url: pdfUrl,
+        pdf_url: uploadResult.storagePath,
         uploaded_by: "Sravani",
       },
     ]);

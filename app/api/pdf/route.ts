@@ -7,12 +7,43 @@ import {
 } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+async function findPathByListing(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  fileName: string
+): Promise<string | null> {
+  const folders = ["uploads", ""];
+
+  for (const folder of folders) {
+    const { data, error } = await supabase.storage
+      .from(NOTES_BUCKET)
+      .list(folder || undefined, {
+        limit: 100,
+        search: fileName,
+      });
+
+    if (error || !data?.length) {
+      continue;
+    }
+
+    const match = data.find(
+      (item: { name: string }) => item.name === fileName
+    );
+    if (match) {
+      return folder ? `${folder}/${match.name}` : match.name;
+    }
+  }
+
+  return null;
+}
 
 export async function GET(request: NextRequest) {
-  const objectPath = request.nextUrl.searchParams.get("path");
+  const rawPath = request.nextUrl.searchParams.get("path");
   const asDownload = request.nextUrl.searchParams.get("download") === "1";
 
-  if (!objectPath) {
+  if (!rawPath) {
     return NextResponse.json(
       { error: "Missing path parameter." },
       { status: 400 }
@@ -30,17 +61,21 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
-  const pathsToTry = candidateStoragePaths(objectPath);
+  const decodedPath = decodeURIComponent(rawPath);
+  let pathsToTry = candidateStoragePaths(decodedPath);
 
-  for (const path of pathsToTry) {
-    const { data, error } = await supabase.storage
-      .from(NOTES_BUCKET)
-      .createSignedUrl(path, 60 * 60);
-
-    if (!error && data?.signedUrl) {
-      return NextResponse.redirect(data.signedUrl);
+  const fileName = decodedPath.split("/").pop();
+  if (fileName) {
+    const listed = await findPathByListing(supabase, fileName);
+    if (listed) {
+      pathsToTry = [
+        listed,
+        ...pathsToTry.filter((p) => p !== listed),
+      ];
     }
   }
+
+  const errors: string[] = [];
 
   for (const path of pathsToTry) {
     const { data, error } = await supabase.storage
@@ -48,29 +83,63 @@ export async function GET(request: NextRequest) {
       .download(path);
 
     if (!error && data) {
-      const fileName = path.split("/").pop() ?? "notes.pdf";
-      return new NextResponse(data, {
+      const bytes = await data.arrayBuffer();
+      const safeName = (path.split("/").pop() ?? "notes.pdf").replace(
+        /[^\w.\-()]/g,
+        "_"
+      );
+
+      return new NextResponse(bytes, {
+        status: 200,
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${fileName}"`,
+          "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${safeName}"`,
           "Cache-Control": "private, max-age=3600",
         },
       });
     }
+
+    if (error) {
+      errors.push(`${path}: ${error.message}`);
+    }
   }
 
-  const publicUrl = getPublicPdfUrl(objectPath);
-  const publicCheck = await fetch(publicUrl, { method: "HEAD" });
+  for (const path of pathsToTry) {
+    try {
+      const publicUrl = getPublicPdfUrl(path);
+      const response = await fetch(publicUrl);
 
-  if (publicCheck.ok) {
-    return NextResponse.redirect(publicUrl);
+      if (response.ok) {
+        const bytes = await response.arrayBuffer();
+        const safeName = (path.split("/").pop() ?? "notes.pdf").replace(
+          /[^\w.\-()]/g,
+          "_"
+        );
+
+        return new NextResponse(bytes, {
+          status: 200,
+          headers: {
+            "Content-Type":
+              response.headers.get("content-type") ?? "application/pdf",
+            "Content-Disposition": `${asDownload ? "attachment" : "inline"}; filename="${safeName}"`,
+            "Cache-Control": "private, max-age=3600",
+          },
+        });
+      }
+
+      errors.push(`${path} (public): HTTP ${response.status}`);
+    } catch (fetchError) {
+      errors.push(
+        `${path} (public): ${fetchError instanceof Error ? fetchError.message : "fetch failed"}`
+      );
+    }
   }
 
   return NextResponse.json(
     {
-      error:
-        "PDF not found. Check Supabase Storage policies for the notes-pdfs bucket (SELECT allowed for uploads/ and root paths).",
+      error: "PDF not found in storage.",
       triedPaths: pathsToTry,
+      details: errors,
     },
     { status: 404 }
   );
